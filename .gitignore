@@ -23,3 +23,5 @@
 terraform.tfstate
 terraform.tfstate.backup
 terraform-provider-prismacloud
+
+.idea/*
