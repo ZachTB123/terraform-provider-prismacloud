@@ -1,5 +1,7 @@
 module github.com/terraform-providers/terraform-provider-prismacloud
 
+go 1.13
+
 require (
 	github.com/hashicorp/terraform-plugin-sdk v1.9.0
 	github.com/paloaltonetworks/prisma-cloud-go v0.3.12
@@ -7,4 +9,4 @@ require (
 
 //replace github.com/paloaltonetworks/prisma-cloud-go => ../prisma-cloud-go
 
-go 1.13
+replace github.com/paloaltonetworks/prisma-cloud-go v0.3.12 => github.com/ZachTB123/prisma-cloud-go v0.3.14

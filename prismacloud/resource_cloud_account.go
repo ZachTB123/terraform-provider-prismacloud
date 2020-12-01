@@ -16,7 +16,7 @@ func resourceCloudAccount() *schema.Resource {
 		Create: createCloudAccount,
 		Read:   readCloudAccount,
 		Update: updateCloudAccount,
-		Delete: deleteCloudAccount,
+		Delete: deleteCloudAccountAction,
 
 		Timeouts: &schema.ResourceTimeout{
 			Create: schema.DefaultTimeout(10 * time.Minute),
@@ -29,6 +29,7 @@ func resourceCloudAccount() *schema.Resource {
 		},
 
 		Schema: map[string]*schema.Schema{
+
 			// AWS type.
 			account.TypeAws: {
 				Type:        schema.TypeList,
@@ -295,6 +296,13 @@ func resourceCloudAccount() *schema.Resource {
 					},
 				},
 			},
+
+			"disable_on_destroy": {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Description: "Whether or not the account will be disabled on terraform destroy rather than deleted. True means the account will be disabled",
+				Default:     false,
+			},
 		},
 	}
 }
@@ -454,7 +462,9 @@ func createCloudAccount(d *schema.ResourceData, meta interface{}) error {
 	cloudType, name, obj := parseCloudAccount(d)
 
 	if err := account.Create(client, obj); err != nil {
-		return err
+		if err != pc.DuplicateCloudAccountError {
+			return err
+		}
 	}
 
 	id, err := account.Identify(client, cloudType, name)
@@ -496,11 +506,19 @@ func updateCloudAccount(d *schema.ResourceData, meta interface{}) error {
 	return readCloudAccount(d, meta)
 }
 
-func deleteCloudAccount(d *schema.ResourceData, meta interface{}) error {
+func deleteCloudAccountAction(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*pc.Client)
 	cloudType, id := IdToTwoStrings(d.Id())
+	shouldDisable := d.Get("disable_on_destroy").(bool)
 
-	err := account.Delete(client, cloudType, id)
+	var err error
+
+	if shouldDisable {
+		err = account.Disable(client, cloudType, id)
+	} else {
+		err = account.Delete(client, cloudType, id)
+	}
+
 	if err != nil {
 		if err != pc.ObjectNotFoundError {
 			return err
