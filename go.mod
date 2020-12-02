@@ -9,4 +9,4 @@ require (
 
 //replace github.com/paloaltonetworks/prisma-cloud-go => ../prisma-cloud-go
 
-replace github.com/paloaltonetworks/prisma-cloud-go v0.3.12 => github.com/ZachTB123/prisma-cloud-go v0.3.14
+replace github.com/paloaltonetworks/prisma-cloud-go v0.3.12 => github.com/ZachTB123/prisma-cloud-go v0.4.1

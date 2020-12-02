@@ -303,6 +303,13 @@ func resourceCloudAccount() *schema.Resource {
 				Description: "Whether or not the account will be disabled on terraform destroy rather than deleted. True means the account will be disabled",
 				Default:     false,
 			},
+
+			"update_on_create": {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Description: "If true and the account already exists, the account will be updated rather than failing on the initial creation of this resource",
+				Default:     false,
+			},
 		},
 	}
 }
@@ -460,16 +467,45 @@ func saveCloudAccount(d *schema.ResourceData, dest string, obj interface{}) {
 func createCloudAccount(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*pc.Client)
 	cloudType, name, obj := parseCloudAccount(d)
+	updateIfExists := d.Get("update_on_create").(bool)
+	successfulUpdate := false
 
 	if err := account.Create(client, obj); err != nil {
-		if err != pc.DuplicateCloudAccountError {
+		if err == pc.DuplicateCloudAccountError && updateIfExists {
+			log.Print("[WARN] Duplicate cloud account detected. Attempting to update")
+			// We don't call updateCloudAccount here because it makes a call
+			// to readCloudAccount which we also do below. Don't want to duplicate
+			// that call. Also, we couldn't readCloudAccount yet since d.SetId hasn't
+			// been called yet.
+			if err := account.Update(client, obj); err != nil {
+				return err
+			}
+			successfulUpdate = true
+		} else {
 			return err
 		}
 	}
 
 	id, err := account.Identify(client, cloudType, name)
 	if err != nil {
-		return err
+		if err == pc.ObjectNotFoundError && updateIfExists && successfulUpdate {
+			// I've observed when changing the name of the account, for example,
+			// that the name is correctly updated in the results of: https://api.docs.prismacloud.io/reference#get-cloud-accounts
+			// but is not correctly updated in the results of: https://api.docs.prismacloud.io/reference#get-cloud-account-names.
+			// This causes Identify to fail, since its comparison includes name, when
+			// update_on_create is true and we update an existing cloud account.
+			// In this case, build the value of id rather than getting it from Identify. Subsequent
+			// updates do not fail if multiple state files constantly change the one account's name.
+			log.Printf("[WARN] Failed to identify cloud account when updating existing account. type: %s, name: %s. Constructing id", cloudType, name)
+			parsedID, parsedIDErr := account.GetID(obj)
+			if parsedIDErr != nil {
+				return parsedIDErr
+			}
+			id = parsedID
+			log.Printf("[DEBUG] Account id is %s. type: %s, name: %s", id, cloudType, name)
+		} else {
+			return err
+		}
 	}
 
 	d.SetId(TwoStringsToId(cloudType, id))
