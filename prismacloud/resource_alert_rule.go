@@ -360,7 +360,7 @@ func parseAlertRule(d *schema.ResourceData, id string) rule.Rule {
 			tmap := item.(map[string]interface{})
 			tags = append(tags, rule.Tag{
 				Key:    tmap["key"].(string),
-				Values: ListToStringSlice(tmap["key"].([]interface{})),
+				Values: ListToStringSlice(tmap["values"].([]interface{})),
 			})
 		}
 	}
@@ -547,10 +547,20 @@ func createAlertRule(d *schema.ResourceData, meta interface{}) error {
 		return err
 	}
 
+	PollApiUntilSuccess(func() error {
+		_, err := rule.Identify(client, o.Name)
+		return err
+	})
+
 	id, err := rule.Identify(client, o.Name)
 	if err != nil {
 		return err
 	}
+
+	PollApiUntilSuccess(func() error {
+		_, err := rule.Get(client, id)
+		return err
+	})
 
 	d.SetId(id)
 	return readAlertRule(d, meta)

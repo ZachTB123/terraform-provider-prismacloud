@@ -486,6 +486,11 @@ func createCloudAccount(d *schema.ResourceData, meta interface{}) error {
 		}
 	}
 
+	PollApiUntilSuccess(func() error {
+		_, err := account.Identify(client, cloudType, name)
+		return err
+	})
+
 	id, err := account.Identify(client, cloudType, name)
 	if err != nil {
 		if err == pc.ObjectNotFoundError && updateIfExists && successfulUpdate {
@@ -507,6 +512,11 @@ func createCloudAccount(d *schema.ResourceData, meta interface{}) error {
 			return err
 		}
 	}
+
+	PollApiUntilSuccess(func() error {
+		_, err := account.Get(client, cloudType, id)
+		return err
+	})
 
 	d.SetId(TwoStringsToId(cloudType, id))
 	return readCloudAccount(d, meta)

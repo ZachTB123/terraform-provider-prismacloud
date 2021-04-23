@@ -1,3 +1,18 @@
+## 1.1.2 (April 19, 2021)
+
+* Fixed self ref policy id in compliance section of policy
+
+## 1.1.1 (April 9, 2021)
+
+* Added new poller to handle master/replica delays in API
+
+## 1.1.0 (February 5, 2021)
+
+NEW RESOURCES:
+
+* `prismacloud_rql_search`
+* `prismacloud_saved_search`
+
 ## 1.0.8 (November 18, 2020)
 
 * Fixed azure key to sensitive
