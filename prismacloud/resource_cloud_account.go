@@ -415,13 +415,23 @@ func saveCloudAccount(d *schema.ResourceData, dest string, obj interface{}) {
 			"account_type":    v.AccountType,
 		}
 	case account.Azure:
+		key := v.Key
+		account := d.Get(account.TypeAzure)
+		if azureSlice, ok := account.([]interface{}); ok {
+			if len(azureSlice) == 1 {
+				if azureMapping, ok := azureSlice[0].(map[string]interface{}); ok {
+					key = azureMapping["key"].(string)
+				}
+			}
+		}
+
 		val = map[string]interface{}{
 			"account_id":           v.Account.AccountId,
 			"enabled":              v.Account.Enabled,
 			"group_ids":            v.Account.GroupIds,
 			"name":                 v.Account.Name,
 			"client_id":            v.ClientId,
-			"key":                  v.Key,
+			"key":                  key,
 			"monitor_flow_logs":    v.MonitorFlowLogs,
 			"tenant_id":            v.TenantId,
 			"service_principal_id": v.ServicePrincipalId,
@@ -486,11 +496,6 @@ func createCloudAccount(d *schema.ResourceData, meta interface{}) error {
 		}
 	}
 
-	PollApiUntilSuccess(func() error {
-		_, err := account.Identify(client, cloudType, name)
-		return err
-	})
-
 	id, err := account.Identify(client, cloudType, name)
 	if err != nil {
 		if err == pc.ObjectNotFoundError && updateIfExists && successfulUpdate {
@@ -512,11 +517,6 @@ func createCloudAccount(d *schema.ResourceData, meta interface{}) error {
 			return err
 		}
 	}
-
-	PollApiUntilSuccess(func() error {
-		_, err := account.Get(client, cloudType, id)
-		return err
-	})
 
 	d.SetId(TwoStringsToId(cloudType, id))
 	return readCloudAccount(d, meta)
